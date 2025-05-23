@@ -55,7 +55,7 @@ L’application permet :
 
 | Composant | Technologie |
 |----------|-------------|
-| Backend | Java 21, Spring Boot |
+| Backend | Java 23, Spring Boot |
 | API Docs | SpringDoc OpenAPI / Swagger |
 | Base de données | PostgreSQL |
 | Authentification | Spring Security + JWT |
