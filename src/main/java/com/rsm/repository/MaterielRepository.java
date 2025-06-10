@@ -12,21 +12,5 @@ import java.util.Set;
 
 @Repository
 public interface MaterielRepository extends JpaRepository<Materiel, Long> {
-    public default Arrays findAllById(Set<Long> materielIds){
-        return null;
-    };
-    public default List<Materiel> findAll() {
-        return List.of();
-    }
 
-    public default Optional<Materiel> findById(Long id) {
-        return Optional.empty();
-    }
-
-    public default Materiel save(Materiel materiel) {
-        return materiel;
-    }
-
-    public default void delete(Materiel materiel) {
-    }
 }

@@ -11,30 +11,23 @@ import java.util.Date;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "reservations")
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Reservation {
+@MappedSuperclass
+public  abstract class Reservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private LocalDateTime dateDebut;
+
+    @Column(nullable = false)
     private LocalDateTime dateFin;
+
     private Date heureDebut;
     private Date heureFin;
-    private String motif;
 
-    @ManyToOne
-    private Salle salle;
-
-    @ManyToMany
-    @JoinTable(name = "reservation_materiels",
-            joinColumns = @JoinColumn(name = "reservation_id"),
-            inverseJoinColumns = @JoinColumn(name = "materiel_id"))
-    private Set<Materiel> materiels;
 
     @ManyToOne
     @JsonIgnore
@@ -42,5 +35,6 @@ public class Reservation {
 
     @Enumerated(EnumType.STRING)
     private StatutReservation statut;
+
 
 }

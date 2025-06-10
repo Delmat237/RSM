@@ -4,6 +4,7 @@ import com.rsm.entity.Materiel;
 import com.rsm.payload.ApiResponse;
 import com.rsm.service.MaterielService;
 import com.rsm.util.ResponseUtil;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/materiels")
+@Tag(name = "Matériels", description = "Gestion des matériels pédagogiques")
 public class MaterielController {
 
     private final MaterielService materielService;

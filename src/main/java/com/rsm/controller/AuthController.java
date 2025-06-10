@@ -11,6 +11,7 @@ import com.rsm.repository.EnseignantRepository;
 import com.rsm.repository.EtudiantRepository;
 import com.rsm.security.JwtUtils;
 import com.rsm.util.ResponseUtil;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +25,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentification", description = "Gestion de l'authentification")
 public class AuthController {
 
     @Autowired

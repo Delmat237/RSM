@@ -4,6 +4,9 @@ package com.rsm.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+
+@Getter
+@Setter
 @Entity
 @Table(name = "salles")
 @Data

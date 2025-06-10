@@ -25,6 +25,10 @@ public class SalleService {
     }
 
     public Salle createSalle(Salle salle) {
+        // Empêcher la création avec un ID manuel
+        if (salle.getId() != null && salle.getId() != 0) {
+            throw new IllegalArgumentException("L'ID ne doit pas être renseigné lors de la création");
+        }
         return salleRepository.save(salle);
     }
 

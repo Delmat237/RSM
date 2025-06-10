@@ -94,7 +94,8 @@ spring.datasource.password=azaleodel
 spring.profiles.active=dev
 
 # 3. Lancer l’application
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
 
 ✅ Accès à l’API : http://localhost:9000/api
 ✅ Swagger : http://localhost:9000/swagger-ui.html

@@ -3,6 +3,7 @@ package com.rsm.controller;
 import com.rsm.entity.Formation;
 import com.rsm.service.FormationService;
 import com.rsm.util.ResponseUtil;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/formations")
+@Tag(name = "Formations", description = "Gestion des formations")
 public class FormationController {
 
     @Autowired

@@ -13,5 +13,5 @@ import java.util.List;
 public class Enseignant extends Utilisateur {
     @OneToMany(mappedBy = "enseignant")
     @JsonIgnore
-    private List<Reservation> reservations;
+    private List<ReservationSalle> reservations;
 }

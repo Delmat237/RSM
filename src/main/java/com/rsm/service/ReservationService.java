@@ -1,136 +1,213 @@
 package com.rsm.service;
 
-import com.rsm.entity.Materiel;
-import com.rsm.entity.Reservation;
-import com.rsm.entity.Salle;
-import com.rsm.entity.StatutReservation;
-import com.rsm.entity.Utilisateur;
-import com.rsm.repository.MaterielRepository;
-import com.rsm.repository.ReservationRepository;
-import com.rsm.repository.SalleRepository;
+import com.rsm.entity.*;
+import com.rsm.exception.ConflictException;
+import com.rsm.exception.ResourceNotFoundException;
+import com.rsm.repository.*;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
-import java.util.Optional;
+import java.util.*;
+
 
 @Service
 public class ReservationService {
 
-    @Autowired
-    private ReservationRepository reservationRepository;
+    private final ReservationSalleRepository salleReservationRepository;
+    private final ReservationMaterielRepository materielReservationRepository;
+    private final SalleRepository salleRepository;
+    private final MaterielRepository materielRepository;
 
     @Autowired
-    private SalleRepository salleRepository;
-
-    @Autowired
-    private MaterielRepository materielRepository;
-
-    public List<Reservation> getAll() {
-        return reservationRepository.findAll();
+    public ReservationService(ReservationSalleRepository salleReservationRepository,
+                              ReservationMaterielRepository materielReservationRepository,
+                              SalleRepository salleRepository,
+                              MaterielRepository materielRepository) {
+        this.salleReservationRepository = salleReservationRepository;
+        this.materielReservationRepository = materielReservationRepository;
+        this.salleRepository = salleRepository;
+        this.materielRepository = materielRepository;
     }
 
-    public List<Reservation> getByEnseignantId(Long enseignantId) {
-        return reservationRepository.findByEnseignantId(enseignantId);
+    // Room Reservation Methods
+
+    @Transactional
+    public ReservationSalle reserverSalle(Enseignant enseignant, Long salleId,
+                                          LocalDateTime dateDebut, LocalDateTime dateFin,
+                                          String motif) throws Exception {
+        validateReservationPeriod(dateDebut, dateFin);
+
+        Salle salle = salleRepository.findById(salleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Salle non trouvée"));
+
+        if (hasRoomConflict(salleId, dateDebut, dateFin)) {
+            throw new ConflictException("La salle est déjà réservée pour cette période");
+        }
+
+        ReservationSalle reservation = new ReservationSalle();
+        reservation.setEnseignant(enseignant);
+        reservation.setSalle(salle);
+        reservation.setDateDebut(dateDebut);
+        reservation.setDateFin(dateFin);
+        reservation.setMotif(motif);
+        reservation.setStatut(StatutReservation.EN_ATTENTE);
+
+        return salleReservationRepository.save(reservation);
     }
 
-    public boolean isCreneauDisponible(LocalDateTime date, Date debut, Date fin, Long salleId) {
-        return reservationRepository.countConflicts(date, debut, fin, salleId) == 0;
+    // Material Reservation Methods
+
+    @Transactional
+    public ReservationMateriel reserverMateriel(Utilisateur enseignant, Long materielId,
+                                                LocalDateTime dateDebut, LocalDateTime dateFin,
+                                                String motif) throws Exception {
+        validateReservationPeriod(dateDebut, dateFin);
+
+
+
+
+        Materiel materiel = materielRepository.findById(materielId)
+                .orElseThrow(() -> new ResourceNotFoundException("Materiel non trouvée"));
+
+        if (hasRoomConflict(materielId, dateDebut, dateFin)) {
+            throw new ConflictException("La salle est déjà réservée pour cette période");
+        }
+
+        ReservationMateriel reservation = new ReservationMateriel();
+        reservation.setEnseignant((Enseignant) enseignant);
+        reservation.setMateriel(materiel);
+        reservation.setDateDebut(dateDebut);
+        reservation.setDateFin(dateFin);
+        reservation.setMotif(motif);
+        reservation.setStatut(StatutReservation.EN_ATTENTE);
+
+        return materielReservationRepository.save(reservation);
     }
 
-    public boolean hasConflit(LocalDateTime debut, LocalDateTime fin, Long salleId) {
-        return reservationRepository.existsBySalleIdAndDateDebutLessThanEqualAndDateFinGreaterThanEqual(
-                salleId, fin, debut
+    // Common CRUD Operations
+
+    public List<ReservationSalle> getAllRoomReservations() {
+        return salleReservationRepository.findAllByOrderByDateDebutAsc();
+    }
+
+    public List<ReservationMateriel> getAllMaterialReservations() {
+        return materielReservationRepository.findAll();
+    }
+
+    public Optional<ReservationSalle> getRoomReservationById(Long id) {
+        return salleReservationRepository.findById(id);
+    }
+
+    public Optional<ReservationMateriel> getMaterialReservationById(Long id) {
+        return materielReservationRepository.findById(id);
+    }
+
+    @Transactional
+    public void cancelReservation(Long id) throws ResourceNotFoundException {
+        if (salleReservationRepository.existsById(id)) {
+            salleReservationRepository.deleteById(id);
+        } else if (materielReservationRepository.existsById(id)) {
+            materielReservationRepository.deleteById(id);
+        } else {
+            throw new ResourceNotFoundException("Réservation non trouvée");
+        }
+    }
+
+    // Status Management
+
+    @Transactional
+    public void updateReservationStatus(Long id, StatutReservation statut) throws ResourceNotFoundException {
+        if (salleReservationRepository.existsById(id)) {
+            salleReservationRepository.updateStatus(id, statut);
+        } else if (materielReservationRepository.existsById(id)) {
+            materielReservationRepository.updateStatus(id, statut);
+        } else {
+            throw new ResourceNotFoundException("Réservation non trouvée");
+        }
+    }
+
+    // Teacher-specific Methods
+
+    public List<Reservation> getTeacherReservations(Long enseignantId) {
+        List<Reservation> reservations = new ArrayList<>();
+        reservations.addAll(salleReservationRepository.findByEnseignantId(enseignantId));
+        reservations.addAll(materielReservationRepository.findByEnseignantId(enseignantId));
+        return reservations;
+    }
+
+    // Availability Checks
+
+    private boolean hasRoomConflict(Long salleId, LocalDateTime debut, LocalDateTime fin) {
+        return salleReservationRepository.existsBySalleIdAndDateDebutLessThanEqualAndDateFinGreaterThanEqual(
+                salleId, fin, debut);
+    }
+
+    private boolean hasMaterialConflict(Long materielId, LocalDateTime debut, LocalDateTime fin) {
+        return materielReservationRepository.existsByMaterielIdAndDateDebutLessThanEqualAndDateFinGreaterThanEqual(
+                materielId, fin, debut);
+    }
+
+    // Validation Methods
+
+    private void validateReservationPeriod(LocalDateTime debut, LocalDateTime fin) throws IllegalArgumentException {
+        if (debut.isAfter(fin)) {
+            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+        }
+        if (debut.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("La réservation ne peut pas être dans le passé");
+        }
+    }
+
+
+    public Reservation update(Long id, Reservation reservation) throws ResourceNotFoundException {
+        if (salleReservationRepository.existsById(id)) {
+            salleReservationRepository.updateStatus(id, reservation.getStatut());
+        } else if (materielReservationRepository.existsById(id)) {
+            materielReservationRepository.updateStatus(id, reservation.getStatut());
+        } else {
+            throw new ResourceNotFoundException("Réservation non trouvée");
+        }
+        return reservation;
+    }
+
+
+
+    public List<ReservationSalle> getRoomReservations(Long salleId) throws ResourceNotFoundException {
+        if (!salleRepository.existsById(salleId)) {
+            throw new ResourceNotFoundException("Salle non trouvée avec l'ID: " + salleId);
+        }
+        return salleReservationRepository.findBySalleIdOrderByDateDebutAsc(salleId);
+    }
+
+
+    public boolean isSalleAvailable(Long salleId, LocalDateTime debut, LocalDateTime fin) throws ResourceNotFoundException {
+        if (debut.isAfter(fin)) {
+            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+        }
+
+        if (!salleRepository.existsById(salleId)) {
+            throw new ResourceNotFoundException("Salle non trouvée avec l'ID: " + salleId);
+        }
+
+        return !salleReservationRepository.existsConflictingReservation(
+                salleId,
+                debut,
+                fin
         );
     }
 
 
-    @Transactional
-    public Reservation reserver(Reservation reservation) throws Exception {
-        boolean dispo = isCreneauDisponible(reservation.getDateDebut(), reservation.getHeureDebut(), reservation.getHeureFin(), reservation.getSalle().getId());
-        if (!dispo) {
-            throw new Exception("Créneau non disponible pour la salle sélectionnée");
-        }
-        if (hasConflit(reservation.getDateDebut(), reservation.getDateFin(), reservation.getSalle().getId())) {
-            throw new Exception("Il y a un conflit de réservation avec la salle.");
+    public List<ReservationSalle> getReservationsBetweenDates(LocalDateTime start, LocalDateTime end) {
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
         }
 
-
-        Salle salle = salleRepository.findById(reservation.getSalle().getId())
-                .orElseThrow(() -> new Exception("Salle non trouvée"));
-
-        if (reservation.getMateriels() != null) {
-            Set<Materiel> materiels = reservation.getMateriels();
-            if (materiels != null && !materiels.isEmpty()) {
-                for (Materiel materiel : materiels) {
-                    materielRepository.findById(materiel.getId())
-                            .orElseThrow(() -> new Exception("Matériel non trouvé"));
-                    // Validation of material existence is sufficient here
-                }
-                reservation.setMateriels(materiels);
-            }
-        }
-
-        reservation.setSalle(salle);
-        reservation.setStatut(StatutReservation.EN_ATTENTE);
-        return reservationRepository.save(reservation);
+        return salleReservationRepository.findBetweenDates(start, end);
     }
 
-
-     public Reservation reserverSalleMateriel(Utilisateur enseignant, Long salleId, Set<Long> materielIds, LocalDateTime dateDebut, LocalDateTime dateFin) {
-        // Implement the logic for reserving a room and materials
-        // For now, return a dummy Reservation object
-        return new Reservation();
+    public List<ReservationSalle> getTeacherRoomReservations(Long enseignantId) {
+        return salleReservationRepository.findByEnseignantId(enseignantId);
     }
-
-    public void supprimer(Long id) {
-        reservationRepository.deleteById(id);
-    }
-
-    public Optional<Reservation> getById(Long id) {
-        return reservationRepository.findById(id);
-    }
-
-    @Transactional
-    public Reservation update(Long id, Reservation reservationDetails) throws Exception {
-        Reservation reservation = reservationRepository.findById(id)
-                .orElseThrow(() -> new Exception("Réservation non trouvée"));
-
-        reservation.setDateDebut(reservationDetails.getDateDebut());
-        reservation.setDateFin(reservationDetails.getDateFin());
-        reservation.setHeureDebut(reservationDetails.getHeureDebut());
-        reservation.setHeureFin(reservationDetails.getHeureFin());
-
-        Salle salle = salleRepository.findById(reservationDetails.getSalle().getId())
-                .orElseThrow(() -> new Exception("Salle non trouvée"));
-        reservation.setSalle(salle);
-
-        Set<Materiel> materiels = reservationDetails.getMateriels();
-        if (materiels != null && !materiels.isEmpty()) {
-            for (Materiel materiel : materiels) {
-                materielRepository.findById(materiel.getId())
-                        .orElseThrow(() -> new Exception("Matériel non trouvé"));
-            }
-            reservation.setMateriels(materiels);
-        }
-
-        return reservationRepository.save(reservation);
-    }
-
-    public void mettreAJourStatut(Long reservationId, StatutReservation statut) throws Exception {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new Exception("Réservation non trouvée"));
-        reservation.setStatut(statut);
-        reservationRepository.save(reservation);
-    }
-
-    public List<Reservation> getRécapitulatifParEnseignant(Long enseignantId) {
-        return reservationRepository.findByEnseignantId(enseignantId);
-    }
-
-
 }

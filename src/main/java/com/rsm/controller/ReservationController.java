@@ -1,14 +1,17 @@
 package com.rsm.controller;
 
-import com.rsm.entity.Reservation;
-import com.rsm.entity.Utilisateur;
-import com.rsm.entity.StatutReservation;
+import com.rsm.entity.*;
+import com.rsm.exception.ResourceNotFoundException;
 import com.rsm.payload.ApiResponse;
 import com.rsm.security.CustomUserDetailsService;
 import com.rsm.service.ReservationService;
-import com.rsm.service.UtilisateurService;
 import com.rsm.util.ResponseUtil;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,72 +20,125 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+
 
 @RestController
 @RequestMapping("/api/reservations")
+@Tag(name = "Reservatioon", description = "Gestion des   réservations")
 public class ReservationController {
-    @Autowired
-    private CustomUserDetailsService utilisateurService;
-
 
     private final ReservationService reservationService;
+    private final CustomUserDetailsService utilisateurService;
 
-    public ReservationController(ReservationService reservationService) {
+
+    @Autowired
+    public ReservationController(ReservationService reservationService,
+                                 CustomUserDetailsService utilisateurService) {
         this.reservationService = reservationService;
+        this.utilisateurService = utilisateurService;
     }
 
-    @PreAuthorize("hasRole('ENSEIGNANT')")
-    @PostMapping("/reserver")
-    public ResponseEntity<ApiResponse<?>> reserverSalle(@AuthenticationPrincipal Utilisateur enseignant,
-                                                        @RequestParam Long salleId,
-                                                        @RequestParam Set<Long> materielIds,
-                                                        @RequestParam String debut,
-                                                        @RequestParam String fin) {
-        try {
-            LocalDateTime dateDebut = LocalDateTime.parse(debut);
-            LocalDateTime dateFin = LocalDateTime.parse(fin);
+    // Salle Reservation Endpoints
 
-            Reservation reservation = reservationService.reserverSalleMateriel(enseignant, salleId, materielIds, dateDebut, dateFin);
-            return ResponseEntity.ok(ResponseUtil.success("Réservation effectuée avec succès", reservation));
+    @PreAuthorize("hasRole('ENSEIGNANT')")
+    @PostMapping("/salles")
+    public ResponseEntity<ApiResponse<?>> reserverSalle(
+            @AuthenticationPrincipal Enseignant enseignant,
+            @RequestParam Long salleId,
+            @Parameter(description = "Date de debut (format: yyyy-MM-ddThh:mm:ss)")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
+            @Parameter(description = "Date de fin (format: yyyy-MM-ddThh:mm:ss)")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fin,
+            @RequestParam String motif) {
+
+        if (debut.isAfter(fin)) {
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error("La date de début doit être antérieure à la date de fin"));
+        }
+        if (debut.isBefore(LocalDateTime.now())) {
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error("La date de début ne peut pas être dans le passé"));
+        }
+
+        try {
+            Reservation reservation = reservationService.reserverSalle(enseignant, salleId, debut, fin, motif);
+            return ResponseEntity.ok(ResponseUtil.success("Réservation de salle effectuée avec succès", reservation));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseUtil.error(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ResponseUtil.error(e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error("Une erreur inattendue s'est produite"));
         }
     }
 
+    // Material Reservation Endpoints
+
     @PreAuthorize("hasRole('ENSEIGNANT')")
-    @PostMapping
-    public ResponseEntity<ApiResponse<?>> reserver(@RequestBody Reservation reservation) {
+    @PostMapping("/materiels")
+    public ResponseEntity<ApiResponse<?>> reserverMateriels(
+            @AuthenticationPrincipal Enseignant enseignant,
+            @RequestParam Long materielId,
+            @Parameter(description = "Date de debut (format: yyyy-MM-ddThh:mm:ss)")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
+            @Parameter(description = "Date de fin (format: yyyy-MM-ddThh:mm:ss)")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fin,
+            @RequestParam(required = false) String motif) {
+
+        if (debut.isAfter(fin)) {
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error("La date de début doit être antérieure à la date de fin"));
+        }
+        if (debut.isBefore(LocalDateTime.now())) {
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error("La date de début ne peut pas être dans le passé"));
+        }
+
         try {
-            Reservation saved = reservationService.reserver(reservation);
-            return ResponseEntity.ok(ResponseUtil.success("Réservation enregistrée", saved));
+            Reservation reservation = reservationService.reserverMateriel(enseignant, materielId, debut, fin, motif);
+            return ResponseEntity.ok(ResponseUtil.success("Réservation de matériel effectuée avec succès", reservation));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseUtil.error(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ResponseUtil.error(e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(ResponseUtil.error("Une erreur inattendue s'est produite"));
         }
     }
+
+    // Common CRUD Endpoints
 
     @PreAuthorize("hasAnyRole('ENSEIGNANT','ADMIN')")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Reservation>>> getAll() {
-        return ResponseEntity.ok(ResponseUtil.success("Liste des réservations", reservationService.getAll()));
+    public ResponseEntity<ApiResponse<List<ReservationSalle>>> getAllReservations() {
+        return ResponseEntity.ok(ResponseUtil.success("Liste des réservations", reservationService.getAllRoomReservations()));
     }
 
     @PreAuthorize("hasRole('ENSEIGNANT')")
     @GetMapping("/enseignant/{id}")
-    public ResponseEntity<ApiResponse<List<Reservation>>> getByEnseignant(@PathVariable Long id) {
-        return ResponseEntity.ok(ResponseUtil.success("Réservations de l'enseignant", reservationService.getByEnseignantId(id)));
+    public ResponseEntity<ApiResponse<List<Reservation>>> getReservationsByEnseignant(@PathVariable Long id) {
+        return ResponseEntity.ok(ResponseUtil.success("Réservations de l'enseignant",
+                reservationService.getTeacherReservations(id)));
     }
 
     @PreAuthorize("hasRole('ENSEIGNANT')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> delete(@PathVariable Long id) {
-        reservationService.supprimer(id);
-        return ResponseEntity.ok(ResponseUtil.success("Réservation supprimée"));
+    public ResponseEntity<ApiResponse<?>> annulerReservation(@PathVariable Long id) throws ResourceNotFoundException {
+        reservationService.cancelReservation(id);
+        return ResponseEntity.ok(ResponseUtil.success("Réservation annulée avec succès"));
     }
 
     @PreAuthorize("hasRole('ENSEIGNANT')")
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> update(@PathVariable Long id, @RequestBody Reservation reservation) {
+    public ResponseEntity<ApiResponse<?>> modifierReservation(
+            @PathVariable Long id,
+            @RequestBody Reservation reservation) {
         try {
             Reservation updated = reservationService.update(id, reservation);
             return ResponseEntity.ok(ResponseUtil.success("Réservation mise à jour", updated));
@@ -91,40 +147,21 @@ public class ReservationController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('ENSEIGNANT','ADMIN')")
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ResponseUtil.success("Réservation trouvée", reservationService.getById(id)));
-    }
+    // Reservation Status Management
 
     @PreAuthorize("hasRole('RESPONSABLE')")
-    @PatchMapping("/{id}/valider")
-    public ResponseEntity<ApiResponse<?>> validerReservation(@PathVariable Long id) {
+    @PatchMapping("/{id}/statut")
+    public ResponseEntity<ApiResponse<?>> modifierStatutReservation(
+            @PathVariable Long id,
+            @RequestParam StatutReservation statut) {
         try {
-            reservationService.mettreAJourStatut(id, StatutReservation.ACCEPTEE);
-            return ResponseEntity.ok(ResponseUtil.success("Réservation validée"));
+            reservationService.updateReservationStatus(id, statut);
+            return ResponseEntity.ok(ResponseUtil.success("Statut de la réservation mis à jour"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseUtil.error(e.getMessage()));
         }
     }
 
-    @PreAuthorize("hasRole('RESPONSABLE')")
-    @PatchMapping("/{id}/refuser")
-    public ResponseEntity<ApiResponse<?>> refuserReservation(@PathVariable Long id) {
-        try {
-            reservationService.mettreAJourStatut(id, StatutReservation.REFUSEE);
-            return ResponseEntity.ok(ResponseUtil.success("Réservation refusée"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ResponseUtil.error(e.getMessage()));
-        }
-    }
 
-    // ✅ Récapitulatif d'un enseignant connecté
-   @PreAuthorize("hasRole('ENSEIGNANT')")
-    @GetMapping("/enseignant")
-   public ResponseEntity<?> recapitulatifEnseignant(@AuthenticationPrincipal UserDetails userDetails) {
-        Utilisateur user = (Utilisateur) utilisateurService.loadUserByUsername(userDetails.getUsername());
-        return ResponseEntity.ok( ResponseUtil.success(reservationService.getRécapitulatifParEnseignant(user.getId())).getData());
-    }
 
 }
