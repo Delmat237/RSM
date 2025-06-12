@@ -35,7 +35,7 @@ public class MaterielController {
                 .orElse(ResponseEntity.status(404).body(ResponseUtil.error("Matériel non trouvé")));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ENSEIGNANT')")
     @PostMapping
     public ResponseEntity<ApiResponse<?>> createMateriel(@RequestBody Materiel materiel) {
         Materiel created = materielService.createMateriel(materiel);
