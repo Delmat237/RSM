@@ -6,6 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,6 +29,7 @@ public class ReservationMateriel extends Reservation {
             inverseJoinColumns = @JoinColumn(name = "materiel_id")
     )
     private Materiel materiel ;
+
 
     @Column(length = 500)
     private String motif; // Reason for reservation
@@ -51,12 +54,12 @@ public class ReservationMateriel extends Reservation {
 
 
     public boolean isActive() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate now = LocalDateTime.now().toLocalDate();
         return getDateDebut().isBefore(now) && getDateFin().isAfter(now);
     }
 
     public boolean isUpcoming() {
-        return getDateDebut().isAfter(LocalDateTime.now());
+        return getDateDebut().isAfter(LocalDateTime.now().toLocalDate());
     }
 
 

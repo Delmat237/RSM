@@ -49,8 +49,10 @@ public class ReservationService {
         ReservationSalle reservation = new ReservationSalle();
         reservation.setEnseignant(enseignant);
         reservation.setSalle(salle);
-        reservation.setDateDebut(dateDebut);
-        reservation.setDateFin(dateFin);
+        reservation.setDateDebut(dateDebut.toLocalDate());
+        reservation.setHeureDebut(dateDebut.toLocalTime());
+        reservation.setHeureFin(dateFin.toLocalTime());
+        reservation.setDateFin(dateFin.toLocalDate());
         reservation.setMotif(motif);
         reservation.setStatut(StatutReservation.EN_ATTENTE);
 
@@ -78,8 +80,9 @@ public class ReservationService {
         ReservationMateriel reservation = new ReservationMateriel();
         reservation.setEnseignant((Enseignant) enseignant);
         reservation.setMateriel(materiel);
-        reservation.setDateDebut(dateDebut);
-        reservation.setDateFin(dateFin);
+        reservation.setDateDebut(dateDebut.toLocalDate());
+        reservation.setDateFin(dateFin.toLocalDate());
+    
         reservation.setMotif(motif);
         reservation.setStatut(StatutReservation.EN_ATTENTE);
 

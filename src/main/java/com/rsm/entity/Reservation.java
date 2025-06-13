@@ -5,9 +5,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Set;
-import java.util.Date;
 
 @Getter
 @Setter
@@ -20,13 +21,13 @@ public  abstract class Reservation {
     private Long id;
 
     @Column(nullable = false)
-    private LocalDateTime dateDebut;
+    private LocalDate dateDebut;
 
     @Column(nullable = false)
-    private LocalDateTime dateFin;
+    private LocalDate dateFin;
 
-    private Date heureDebut;
-    private Date heureFin;
+    private LocalTime heureDebut;
+    private LocalTime heureFin;
 
 
     @ManyToOne
@@ -35,6 +36,9 @@ public  abstract class Reservation {
 
     @Enumerated(EnumType.STRING)
     private StatutReservation statut;
+
+    @OneToMany
+    private Set<Materiel> materiels;
 
 
 }

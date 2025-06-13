@@ -40,7 +40,7 @@ public class ReservationController {
 
     // Salle Reservation Endpoints
 
-    @PreAuthorize("hasRole('ENSEIGNANT')")
+    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
     @PostMapping("/salles")
     public ResponseEntity<ApiResponse<?>> reserverSalle(
             @AuthenticationPrincipal Enseignant enseignant,
@@ -77,7 +77,7 @@ public class ReservationController {
 
     // Material Reservation Endpoints
 
-    @PreAuthorize("hasRole('ENSEIGNANT')")
+    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
     @PostMapping("/materiels")
     public ResponseEntity<ApiResponse<?>> reserverMateriels(
             @AuthenticationPrincipal Enseignant enseignant,
@@ -114,27 +114,27 @@ public class ReservationController {
 
     // Common CRUD Endpoints
 
-    @PreAuthorize("hasAnyRole('ENSEIGNANT','ADMIN')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE,ENSEIGNANT','ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<ReservationSalle>>> getAllReservations() {
         return ResponseEntity.ok(ResponseUtil.success("Liste des réservations", reservationService.getAllRoomReservations()));
     }
 
-    @PreAuthorize("hasRole('ENSEIGNANT')")
+    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
     @GetMapping("/enseignant/{id}")
     public ResponseEntity<ApiResponse<List<Reservation>>> getReservationsByEnseignant(@PathVariable Long id) {
         return ResponseEntity.ok(ResponseUtil.success("Réservations de l'enseignant",
                 reservationService.getTeacherReservations(id)));
     }
 
-    @PreAuthorize("hasRole('ENSEIGNANT')")
+    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> annulerReservation(@PathVariable Long id) throws ResourceNotFoundException {
         reservationService.cancelReservation(id);
         return ResponseEntity.ok(ResponseUtil.success("Réservation annulée avec succès"));
     }
 
-    @PreAuthorize("hasRole('ENSEIGNANT')")
+    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> modifierReservation(
             @PathVariable Long id,
@@ -149,7 +149,7 @@ public class ReservationController {
 
     // Reservation Status Management
 
-    @PreAuthorize("hasRole('RESPONSABLE')")
+    @PreAuthorize("hasRole('ADMIN,RESPONSABLE')")
     @PatchMapping("/{id}/statut")
     public ResponseEntity<ApiResponse<?>> modifierStatutReservation(
             @PathVariable Long id,

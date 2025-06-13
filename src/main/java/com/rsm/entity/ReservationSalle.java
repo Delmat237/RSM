@@ -6,6 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+
 
 @Entity
 @Table(name = "reservations_salle")
@@ -28,6 +30,7 @@ public class ReservationSalle extends Reservation {
     @Column(nullable = false)
     private StatutReservation statut = StatutReservation.EN_ATTENTE;
 
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -42,15 +45,15 @@ public class ReservationSalle extends Reservation {
 
     // Business methods
     public boolean isActive() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate now = LocalDateTime.now().toLocalDate();
         return getDateDebut().isBefore(now) && getDateFin().isAfter(now);
     }
 
     public boolean isUpcoming() {
-        return getDateDebut().isAfter(LocalDateTime.now());
+        return getDateDebut().isAfter(LocalDateTime.now().toLocalDate());
     }
 
     public boolean isPast() {
-        return getDateFin().isBefore(LocalDateTime.now());
+        return getDateFin().isBefore(LocalDateTime.now().toLocalDate());
     }
 }
