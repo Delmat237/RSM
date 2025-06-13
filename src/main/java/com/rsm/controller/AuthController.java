@@ -50,7 +50,8 @@ public class AuthController {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtUtils.generateToken(userDetails);
-        return ResponseEntity.ok(ResponseUtil.success("Connexion réussie", new LoginResponse(token)));
+        Enseignant enseignant = enseignantRepository.findByEmail(request.getEmail()).orElse(null);
+        return ResponseEntity.ok(ResponseUtil.success("Connexion réussie", new LoginResponse(token,enseignant)));
     }
 
     @PostMapping("/register")
