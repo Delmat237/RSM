@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+
 import java.util.List;
 
 public interface ReservationSalleRepository extends JpaRepository<ReservationSalle, Long> {
@@ -90,7 +91,15 @@ public interface ReservationSalleRepository extends JpaRepository<ReservationSal
     @Query("SELECT r FROM ReservationSalle r " +
             "WHERE r.dateDebut >= :start AND r.dateFin <= :end " +
             "ORDER BY r.dateDebut ASC")
-    List<ReservationSalle> findBetweenDates(
+           List<ReservationSalle> findBetweenDates(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
+
+@Query("SELECT COUNT(r) > 0 FROM ReservationSalle r " +
+       "WHERE r.enseignant.id = :enseignantId " +
+       "AND r.dateDebut <= :dateDebut AND r.dateFin >= :dateFin")
+        boolean hasReservedSalle(@Param("enseignantId") Long enseignantId,
+                         @Param("dateDebut") LocalDateTime dateDebut,
+                         @Param("dateFin") LocalDateTime dateFin);
+
 }

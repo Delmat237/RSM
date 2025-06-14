@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Set;
 
@@ -21,10 +21,10 @@ public  abstract class Reservation {
     private Long id;
 
     @Column(nullable = false)
-    private LocalDate dateDebut;
+    private LocalDateTime  dateDebut;
 
     @Column(nullable = false)
-    private LocalDate dateFin;
+    private LocalDateTime dateFin;
 
     private LocalTime heureDebut;
     private LocalTime heureFin;

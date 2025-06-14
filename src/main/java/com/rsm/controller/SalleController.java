@@ -46,7 +46,7 @@ public class SalleController {
 
     @Operation(summary = "Permet  d'enregistrer une nouvelles salles")
     // Création (ADMIN uniquement)
-    @PreAuthorize("hasRole('ENSEIGNANT,RESPONSABLE')")
+    @PreAuthorize("hasAnyRole('ENSEIGNANT','RESPONSABLE')")
     @PostMapping
     public ResponseEntity<ApiResponse<Salle>> createSalle(@RequestBody Salle salle) {
         salleService.createSalle(salle);

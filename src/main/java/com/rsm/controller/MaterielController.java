@@ -35,14 +35,14 @@ public class MaterielController {
                 .orElse(ResponseEntity.status(404).body(ResponseUtil.error("Matériel non trouvé")));
     }
 
-    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
+    @PreAuthorize("hasAnyRole('ADMIN','ENSEIGNANT','RESPONSABLE')")
     @PostMapping
     public ResponseEntity<ApiResponse<?>> createMateriel(@RequestBody Materiel materiel) {
         Materiel created = materielService.createMateriel(materiel);
         return ResponseEntity.ok(ResponseUtil.success("Matériel créé avec succès", created));
     }
 
-    @PreAuthorize("hasRole('ADMIN,ENSEIGNANT,RESPONSABLE')")
+    @PreAuthorize("hasAnyRole('ADMIN','ENSEIGNANT','RESPONSABLE')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<?>> updateMateriel(@PathVariable Long id, @RequestBody Materiel materiel) {
         try {

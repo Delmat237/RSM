@@ -5,8 +5,10 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.LocalDateTime;
-import java.time.LocalDate;
+
 
 
 @Entity
@@ -17,10 +19,12 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ReservationSalle extends Reservation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "salle_id", nullable = false)
+     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Salle salle;
 
     @Column(length = 500)
@@ -41,19 +45,20 @@ public class ReservationSalle extends Reservation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "enseignant_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Enseignant enseignant;
 
     // Business methods
     public boolean isActive() {
-        LocalDate now = LocalDateTime.now().toLocalDate();
+        LocalDateTime now = LocalDateTime.now();
         return getDateDebut().isBefore(now) && getDateFin().isAfter(now);
     }
 
     public boolean isUpcoming() {
-        return getDateDebut().isAfter(LocalDateTime.now().toLocalDate());
+        return getDateDebut().isAfter(LocalDateTime.now());
     }
 
     public boolean isPast() {
-        return getDateFin().isBefore(LocalDateTime.now().toLocalDate());
+        return getDateFin().isBefore(LocalDateTime.now());
     }
 }

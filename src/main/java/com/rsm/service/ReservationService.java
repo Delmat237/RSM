@@ -1,15 +1,29 @@
 package com.rsm.service;
 
-import com.rsm.entity.*;
-import com.rsm.exception.ConflictException;
-import com.rsm.exception.ResourceNotFoundException;
-import com.rsm.repository.*;
-import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import com.rsm.entity.Enseignant;
+import com.rsm.entity.Materiel;
+import com.rsm.entity.Reservation;
+import com.rsm.entity.ReservationMateriel;
+import com.rsm.entity.ReservationSalle;
+import com.rsm.entity.Salle;
+import com.rsm.entity.StatutReservation;
+import com.rsm.entity.Utilisateur;
+import com.rsm.exception.ConflictException;
+import com.rsm.exception.ResourceNotFoundException;
+import com.rsm.repository.MaterielRepository;
+import com.rsm.repository.ReservationMaterielRepository;
+import com.rsm.repository.ReservationSalleRepository;
+import com.rsm.repository.SalleRepository;
+
+import jakarta.transaction.Transactional;
 
 
 @Service
@@ -41,58 +55,76 @@ public class ReservationService {
 
         Salle salle = salleRepository.findById(salleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Salle non trouvée"));
-
+        // Check for room conflicts
         if (hasRoomConflict(salleId, dateDebut, dateFin)) {
             throw new ConflictException("La salle est déjà réservée pour cette période");
         }
 
+        //mettre la salle indisponible
+
+        //salle.setDisponibilite(false);
         ReservationSalle reservation = new ReservationSalle();
         reservation.setEnseignant(enseignant);
         reservation.setSalle(salle);
-        reservation.setDateDebut(dateDebut.toLocalDate());
+        if (dateDebut == null || dateFin == null) {
+    throw new IllegalArgumentException("Date de début ou de fin manquante");
+}
+        reservation.setDateDebut(dateDebut);
         reservation.setHeureDebut(dateDebut.toLocalTime());
         reservation.setHeureFin(dateFin.toLocalTime());
-        reservation.setDateFin(dateFin.toLocalDate());
+        reservation.setDateFin(dateFin);
         reservation.setMotif(motif);
         reservation.setStatut(StatutReservation.EN_ATTENTE);
+
+        System.out.println("Réservation : " + reservation);
 
         return salleReservationRepository.save(reservation);
     }
 
     // Material Reservation Methods
 
-    @Transactional
-    public ReservationMateriel reserverMateriel(Utilisateur enseignant, Long materielId,
-                                                LocalDateTime dateDebut, LocalDateTime dateFin,
-                                                String motif) throws Exception {
-        validateReservationPeriod(dateDebut, dateFin);
+ @Transactional
+public ReservationMateriel reserverMateriel(Utilisateur enseignant, Long materielId,
+                                            LocalDateTime dateDebut, LocalDateTime dateFin,
+                                            String motif) throws Exception {
+    validateReservationPeriod(dateDebut, dateFin);
 
+    Materiel materiel = materielRepository.findById(materielId)
+            .orElseThrow(() -> new ResourceNotFoundException("Matériel non trouvé"));
 
-
-
-        Materiel materiel = materielRepository.findById(materielId)
-                .orElseThrow(() -> new ResourceNotFoundException("Materiel non trouvée"));
-
-        if (hasRoomConflict(materielId, dateDebut, dateFin)) {
-            throw new ConflictException("La salle est déjà réservée pour cette période");
-        }
-
-        ReservationMateriel reservation = new ReservationMateriel();
-        reservation.setEnseignant((Enseignant) enseignant);
-        reservation.setMateriel(materiel);
-        reservation.setDateDebut(dateDebut.toLocalDate());
-        reservation.setDateFin(dateFin.toLocalDate());
-    
-        reservation.setMotif(motif);
-        reservation.setStatut(StatutReservation.EN_ATTENTE);
-
-        return materielReservationRepository.save(reservation);
+    if (hasMaterialConflict(materielId, dateDebut, dateFin)) {
+        throw new ConflictException("Le matériel est déjà réservé pour cette période");
     }
+
+    // ⚠️ Nouvelle vérification
+    boolean aReserveUneSalle = salleReservationRepository.hasReservedSalle(
+            enseignant.getId(), dateDebut, dateFin
+    );
+
+    if (!aReserveUneSalle) {
+        throw new ConflictException("Vous devez d'abord réserver une salle pour pouvoir réserver ce matériel.");
+    }
+
+    ReservationMateriel reservation = new ReservationMateriel();
+    reservation.setEnseignant((Enseignant) enseignant);
+    reservation.setMateriel(materiel);
+    if (dateDebut == null || dateFin == null) {
+    throw new IllegalArgumentException("Date de début ou de fin manquante");
+}
+    reservation.setDateDebut(dateDebut);
+    reservation.setDateFin(dateFin);
+     reservation.setHeureDebut(dateDebut.toLocalTime());
+        reservation.setHeureFin(dateFin.toLocalTime());
+    reservation.setMotif(motif);
+    reservation.setStatut(StatutReservation.EN_ATTENTE);
+
+    return materielReservationRepository.save(reservation);
+}
 
     // Common CRUD Operations
 
     public List<ReservationSalle> getAllRoomReservations() {
-        return salleReservationRepository.findAllByOrderByDateDebutAsc();
+        return salleReservationRepository.findAll();
     }
 
     public List<ReservationMateriel> getAllMaterialReservations() {
